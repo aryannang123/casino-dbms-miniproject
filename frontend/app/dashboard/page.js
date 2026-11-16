@@ -54,9 +54,12 @@ export default function DashboardPage() {
           betsAPI.history(),
           gamesAPI.list(),
         ]);
-        setWallet(w.data);
-        setBets(Array.isArray(b.data) ? b.data : b.data?.bets ?? []);
-        setGames(Array.isArray(g.data) ? g.data : g.data?.games ?? []);
+        const walletData = w.data?.data || w.data;
+        const betsData = b.data?.data?.bets || b.data?.data || b.data?.bets || b.data;
+        const gamesData = g.data?.data?.games || g.data?.data || g.data?.games || g.data;
+        setWallet(walletData);
+        setBets(Array.isArray(betsData) ? betsData : []);
+        setGames(Array.isArray(gamesData) ? gamesData : []);
       } catch (err) {
         setError('Failed to load dashboard data. Please refresh.');
       } finally {
@@ -78,9 +81,10 @@ export default function DashboardPage() {
   }
 
   const recentBets = bets.slice(0, 5);
-  const totalWon = bets.filter((b) => b.status === 'WON').reduce((s, b) => s + (b.payout ?? 0), 0);
+  const wonBets = bets.filter((b) => (b.outcome || b.status) === 'WON');
+  const totalWon = wonBets.reduce((s, b) => s + (Number(b.payout) || 0), 0);
   const totalBets = bets.length;
-  const winRate = totalBets > 0 ? ((bets.filter((b) => b.status === 'WON').length / totalBets) * 100).toFixed(1) : 0;
+  const winRate = totalBets > 0 ? ((wonBets.length / totalBets) * 100).toFixed(1) : 0;
 
   return (
     <div className="page-wrapper">
@@ -162,24 +166,29 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-casino-border">
-                {recentBets.map((bet) => (
-                  <tr key={bet.id ?? bet._id} className="hover:bg-white/2 transition-colors">
-                    <td className="table-cell font-medium text-white">{bet.game?.name ?? bet.gameName ?? '—'}</td>
-                    <td className="table-cell">{bet.betType ?? '—'}</td>
-                    <td className="table-cell text-gold">₹{Number(bet.amount).toLocaleString('en-IN')}</td>
-                    <td className="table-cell">
-                      {bet.payout != null ? (
-                        <span className={bet.payout > 0 ? 'text-green-400' : 'text-gray-500'}>
-                          ₹{Number(bet.payout).toLocaleString('en-IN')}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="table-cell"><StatusBadge status={bet.status} /></td>
-                    <td className="table-cell text-gray-500">
-                      {bet.createdAt ? new Date(bet.createdAt).toLocaleDateString() : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {recentBets.map((bet) => {
+                  const status = bet.outcome || bet.status || 'PENDING';
+                  const gameTitle = bet.game_type ? `${bet.game_type} (T-${bet.table_number})` : (bet.game?.name || 'Casino Game');
+                  const dateStr = bet.bet_time || bet.createdAt;
+                  return (
+                    <tr key={bet.bet_id || bet.id || bet._id} className="hover:bg-white/2 transition-colors">
+                      <td className="table-cell font-medium text-white">{gameTitle}</td>
+                      <td className="table-cell">{bet.bet_type || bet.betType || '—'}</td>
+                      <td className="table-cell text-gold">₹{Number(bet.amount).toLocaleString('en-IN')}</td>
+                      <td className="table-cell">
+                        {bet.payout != null ? (
+                          <span className={Number(bet.payout) > 0 ? 'text-green-400' : 'text-gray-500'}>
+                            ₹{Number(bet.payout).toLocaleString('en-IN')}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="table-cell"><StatusBadge status={status} /></td>
+                      <td className="table-cell text-gray-500">
+                        {dateStr ? new Date(dateStr).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

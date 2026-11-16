@@ -28,7 +28,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const res = await authAPI.login({ email, password });
-    const { token: jwt, user: userData } = res.data;
+    const responseData = res.data?.data || res.data;
+    const jwt = responseData.token;
+    const userData = responseData.player || responseData.user;
     localStorage.setItem('token', jwt);
     localStorage.setItem('user', JSON.stringify(userData));
     setToken(jwt);
@@ -38,7 +40,9 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (formData) => {
     const res = await authAPI.register(formData);
-    const { token: jwt, user: userData } = res.data;
+    const responseData = res.data?.data || res.data;
+    const jwt = responseData.token;
+    const userData = responseData.player || responseData.user;
     localStorage.setItem('token', jwt);
     localStorage.setItem('user', JSON.stringify(userData));
     setToken(jwt);

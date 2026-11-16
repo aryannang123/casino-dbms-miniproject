@@ -60,7 +60,8 @@ export const tablesAPI = {
 // ── Bets ──────────────────────────────────────────────────
 export const betsAPI = {
   place: (data) => api.post('/bets', data),
-  history: () => api.get('/bets'),
+  history: () => api.get('/bets/history'),
+  stats: () => api.get('/bets/stats'),
 };
 
 // ── Wallet ────────────────────────────────────────────────

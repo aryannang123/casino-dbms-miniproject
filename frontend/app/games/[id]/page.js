@@ -37,8 +37,18 @@ export default function GameDetailPage() {
     if (!isAuthenticated || !gameId) return;
     Promise.all([gamesAPI.get(gameId), walletAPI.balance()])
       .then(([g, w]) => {
-        setGame(g.data?.game ?? g.data);
-        setWallet(w.data);
+        const rawGame = g.data?.data || g.data?.game || g.data;
+        const normalized = {
+          ...rawGame,
+          id: rawGame.game_id || rawGame.id,
+          name: rawGame.name || `${rawGame.game_type} - Table ${rawGame.table_number || ''}`,
+          type: rawGame.game_type || rawGame.type,
+          minBet: rawGame.minimum_bet || rawGame.minBet || 10,
+          maxBet: rawGame.maximum_bet || rawGame.maxBet || 1000,
+          tableName: rawGame.table_number ? `Table ${rawGame.table_number}` : rawGame.tableName,
+        };
+        setGame(normalized);
+        setWallet(w.data?.data || w.data);
       })
       .catch(() => setError('Failed to load game details.'))
       .finally(() => setLoading(false));

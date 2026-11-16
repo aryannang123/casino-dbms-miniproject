@@ -63,7 +63,21 @@ export default function GamesPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     gamesAPI.list()
-      .then((res) => setGames(Array.isArray(res.data) ? res.data : res.data?.games ?? []))
+      .then((res) => {
+        const rawGames = res.data?.data?.games || res.data?.games || (Array.isArray(res.data) ? res.data : []);
+        // Normalize fields from DB (game_id, game_type, minimum_bet, maximum_bet, table_number)
+        const normalized = rawGames.map((g) => ({
+          id: g.game_id || g.id || g._id,
+          name: g.name || `${g.game_type || 'Casino'} - Table ${g.table_number || ''}`,
+          type: g.game_type || g.type || 'DEFAULT',
+          status: g.status || 'ACTIVE',
+          description: g.description || `Hosted by ${g.dealer_name || 'Dealer'}`,
+          minBet: g.minimum_bet || g.minBet || 10,
+          maxBet: g.maximum_bet || g.maxBet || 500,
+          tableName: g.table_number ? `Table ${g.table_number}` : g.tableName,
+        }));
+        setGames(normalized);
+      })
       .catch(() => setError('Failed to load games. Please refresh.'))
       .finally(() => setLoading(false));
   }, [isAuthenticated]);
