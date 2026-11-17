@@ -42,9 +42,11 @@ export default function Navbar() {
                 <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>
                 <Link href="/games" className={linkClass('/games')}>Games</Link>
                 <Link href="/wallet" className={linkClass('/wallet')}>Wallet</Link>
-                <Link href="/analytics" className={linkClass('/analytics')}>
-                  <span className="text-purple-300">AI Vectors</span>
-                </Link>
+                {isAdmin && (
+                  <Link href="/analytics" className={linkClass('/analytics')}>
+                    <span className="text-emerald-400 font-medium">MongoDB NoSQL</span>
+                  </Link>
+                )}
                 {isDealer && (
                   <Link href="/dealer" className={linkClass('/dealer')}>
                     <span className="text-casino-red-light font-bold">Dealer</span>
@@ -115,7 +117,7 @@ export default function Navbar() {
                 <Link href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMenuOpen(false)}>Dashboard</Link>
                 <Link href="/games" className={linkClass('/games')} onClick={() => setMenuOpen(false)}>Games</Link>
                 <Link href="/wallet" className={linkClass('/wallet')} onClick={() => setMenuOpen(false)}>Wallet</Link>
-                <Link href="/analytics" className={linkClass('/analytics')} onClick={() => setMenuOpen(false)}>AI Vectors</Link>
+                {isAdmin && <Link href="/analytics" className={linkClass('/analytics')} onClick={() => setMenuOpen(false)}>MongoDB NoSQL</Link>}
                 {isDealer && <Link href="/dealer" className={linkClass('/dealer')} onClick={() => setMenuOpen(false)}>Dealer Panel</Link>}
                 {isAdmin && <Link href="/admin" className={linkClass('/admin')} onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
                 <button onClick={handleLogout} className="mt-2 w-full text-left px-3 py-2 text-sm text-casino-red-light hover:bg-casino-red/10 rounded-md transition-colors">

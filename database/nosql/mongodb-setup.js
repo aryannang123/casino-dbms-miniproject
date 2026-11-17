@@ -17,7 +17,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../backend/.env') });
 
-const mongoose = require('mongoose');
+const mongoose = require(require('path').join(__dirname, '../../backend/node_modules/mongoose'));
 const {
     GameLog,
     PlayerActivity,
@@ -144,13 +144,13 @@ async function seedAnalytics() {
 
     const sample = {
         date: new Date('2024-10-20T00:00:00Z'),
-        dailyRevenue: 5420.50,
-        dailyPlayers: 86,
+        dailyRevenue: 1450.00,
+        dailyPlayers: 10,
         peakHour: 21,
         gameTypeStats: [
-            { gameType: 'BLACKJACK', gamesPlayed: 24, revenue: 2100.00, playerCount: 42 },
-            { gameType: 'POKER', gamesPlayed: 12, revenue: 1650.50, playerCount: 28 },
-            { gameType: 'ROULETTE', gamesPlayed: 30, revenue: 1670.00, playerCount: 50 }
+            { gameType: 'BLACKJACK', gamesPlayed: 5, revenue: 650.00, playerCount: 5 },
+            { gameType: 'POKER', gamesPlayed: 3, revenue: 450.00, playerCount: 4 },
+            { gameType: 'ROULETTE', gamesPlayed: 4, revenue: 350.00, playerCount: 6 }
         ]
     };
 

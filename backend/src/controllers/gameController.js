@@ -111,7 +111,7 @@ const createGame = async (req, res) => {
         const { tableId, dealerId, gameType } = req.body;
 
         const result = await query(
-            'SELECT * FROM create_game($1, $2, $3)',
+            'CALL create_game(?, ?, ?)',
             [tableId, dealerId, gameType]
         );
 
@@ -130,6 +130,14 @@ const createGame = async (req, res) => {
     } catch (error) {
         console.error('Create game error:', error);
         
+        if (error.sqlMessage) {
+            return res.status(400).json({
+                success: false,
+                message: error.sqlMessage,
+                error: error.sqlMessage
+            });
+        }
+
         if (error.message.includes('not available') || error.message.includes('not active')) {
             return res.status(400).json({
                 success: false,
@@ -153,7 +161,7 @@ const endGame = async (req, res) => {
         const { status = 'COMPLETED' } = req.body;
 
         const result = await query(
-            'SELECT * FROM end_game($1, $2)',
+            'CALL end_game(?, ?)',
             [id, status]
         );
 
@@ -161,17 +169,25 @@ const endGame = async (req, res) => {
 
         res.json({
             success: true,
-            message: endResult.message,
+            message: endResult?.message || 'Game ended successfully',
             data: {
-                gameId: endResult.game_id,
-                pendingBets: endResult.pending_bets,
+                gameId: endResult?.game_id || id,
+                pendingBets: endResult?.pending_bets || 0,
                 status
             }
         });
     } catch (error) {
         console.error('End game error:', error);
         
-        if (error.message.includes('not active')) {
+        if (error.sqlMessage) {
+            return res.status(400).json({
+                success: false,
+                message: error.sqlMessage,
+                error: error.sqlMessage
+            });
+        }
+
+        if (error.message && error.message.includes('not active')) {
             return res.status(400).json({
                 success: false,
                 message: 'Game is not active.',
@@ -181,7 +197,7 @@ const endGame = async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: 'Failed to end game.',
+            message: error.message || 'Failed to end game.',
             error: error.message
         });
     }
@@ -233,10 +249,31 @@ const getGameBets = async (req, res) => {
     }
 };
 
+// Get all dealers (Active)
+const getDealers = async (req, res) => {
+    try {
+        const result = await query(
+            'SELECT dealer_id, name, employee_id, shift, status FROM DEALER WHERE status = "ACTIVE" ORDER BY name ASC'
+        );
+        res.json({
+            success: true,
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Get dealers error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch dealers.',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getGames,
     getGame,
     createGame,
     endGame,
-    getGameBets
+    getGameBets,
+    getDealers
 };

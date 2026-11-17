@@ -19,6 +19,7 @@ const GAME_ICONS = {
 const STATUS_MAP = {
   ACTIVE: { label: 'Active', cls: 'badge-green' },
   INACTIVE: { label: 'Inactive', cls: 'badge-gray' },
+  COMPLETED: { label: 'Completed', cls: 'badge-gray' },
   CLOSED: { label: 'Closed', cls: 'badge-red' },
 };
 
@@ -40,7 +41,11 @@ function GameCard({ game }) {
         {game.tableName && <span>🪑 {game.tableName}</span>}
       </div>
       <div className="mt-4 pt-4 border-t border-casino-border">
-        <span className="text-xs font-semibold text-gold group-hover:underline">Play Now →</span>
+        {game.status?.toUpperCase() === 'ACTIVE' ? (
+          <span className="text-xs font-semibold text-gold group-hover:underline">Play Now →</span>
+        ) : (
+          <span className="text-xs font-medium text-gray-500">View History →</span>
+        )}
       </div>
     </Link>
   );
@@ -70,7 +75,7 @@ export default function GamesPage() {
           id: g.game_id || g.id || g._id,
           name: g.name || `${g.game_type || 'Casino'} - Table ${g.table_number || ''}`,
           type: g.game_type || g.type || 'DEFAULT',
-          status: g.status || 'ACTIVE',
+          status: g.status,
           description: g.description || `Hosted by ${g.dealer_name || 'Dealer'}`,
           minBet: g.minimum_bet || g.minBet || 10,
           maxBet: g.maximum_bet || g.maxBet || 500,
@@ -85,7 +90,13 @@ export default function GamesPage() {
   const filtered = games.filter((g) => {
     const matchSearch = g.name?.toLowerCase().includes(search.toLowerCase()) ||
       g.type?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'ALL' || g.status?.toUpperCase() === filter;
+    const isGameActive = g.status?.toUpperCase() === 'ACTIVE';
+    let matchFilter = true;
+    if (filter === 'ACTIVE') {
+      matchFilter = isGameActive;
+    } else if (filter === 'COMPLETED' || filter === 'INACTIVE') {
+      matchFilter = !isGameActive; // Covers 'COMPLETED', 'INACTIVE', 'CLOSED'
+    }
     return matchSearch && matchFilter;
   });
 
@@ -119,7 +130,7 @@ export default function GamesPage() {
           className="input-field sm:max-w-xs"
         />
         <div className="flex gap-2">
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((f) => (
+          {['ALL', 'ACTIVE', 'COMPLETED'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -129,7 +140,7 @@ export default function GamesPage() {
                   : 'border border-casino-border text-gray-400 hover:border-gold/40 hover:text-gold'
               }`}
             >
-              {f}
+              {f === 'COMPLETED' ? 'COMPLETED' : f}
             </button>
           ))}
         </div>

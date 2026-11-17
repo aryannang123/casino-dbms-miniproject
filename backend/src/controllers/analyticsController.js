@@ -12,6 +12,7 @@
 
 const {
     isMongoConnected,
+    connectMongoDB,
     GameLog,
     PlayerActivity,
     CasinoAnalytics,
@@ -20,11 +21,15 @@ const {
     cosineSimilarity
 } = require('../config/mongodb');
 
-function requireMongo() {
+async function requireMongo() {
     if (!isMongoConnected()) {
-        const err = new Error('MongoDB is not available. Analytics and Vector features are currently offline.');
-        err.statusCode = 503;
-        throw err;
+        try {
+            await connectMongoDB();
+        } catch (e) {
+            const err = new Error('MongoDB is not available. Analytics and Vector features are currently offline.');
+            err.statusCode = 503;
+            throw err;
+        }
     }
 }
 
@@ -32,7 +37,7 @@ function requireMongo() {
 // 1. Game Event Logging
 // =====================================================
 async function logGameEvent(gameId, eventType, details = {}, opts = {}) {
-    requireMongo();
+    await requireMongo();
 
     if (!gameId || !eventType) {
         const err = new Error('gameId and eventType are required.');
@@ -74,12 +79,12 @@ async function logGameEvent(gameId, eventType, details = {}, opts = {}) {
 }
 
 async function getGameAnalytics(gameId) {
-    requireMongo();
+    await requireMongo();
     return GameLog.findOne({ gameId }).lean();
 }
 
 async function getDailyAnalytics(dateString) {
-    requireMongo();
+    await requireMongo();
     const date = new Date(dateString);
     const start = new Date(date.setUTCHours(0, 0, 0, 0));
     const end   = new Date(date.setUTCHours(23, 59, 59, 999));
@@ -90,12 +95,12 @@ async function getDailyAnalytics(dateString) {
 }
 
 async function getPlayerActivity(playerId) {
-    requireMongo();
+    await requireMongo();
     return PlayerActivity.findOne({ playerId }).lean();
 }
 
 async function updateDailyAnalytics() {
-    requireMongo();
+    await requireMongo();
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
     const todayEnd = new Date();
@@ -167,7 +172,7 @@ async function updateDailyAnalytics() {
  * Get all stored game vector embeddings
  */
 async function getAllGameVectors() {
-    requireMongo();
+    await requireMongo();
     return GameVectorEmbedding.find({}).lean();
 }
 
@@ -175,7 +180,7 @@ async function getAllGameVectors() {
  * Cosine similarity search across game embeddings for a query vector
  */
 async function searchVectorRecommendations(targetVector, topK = 3) {
-    requireMongo();
+    await requireMongo();
     const allGames = await GameVectorEmbedding.find({}).lean();
 
     const scored = allGames.map(game => ({
@@ -195,7 +200,7 @@ async function searchVectorRecommendations(targetVector, topK = 3) {
  * Get or compute player recommendations using their stored preference vector
  */
 async function getPlayerRecommendations(playerId) {
-    requireMongo();
+    await requireMongo();
     let pref = await PlayerPreferenceVector.findOne({ playerId }).lean();
     if (!pref) {
         // Fallback default balanced preference vector
@@ -219,7 +224,7 @@ async function getPlayerRecommendations(playerId) {
  * Upsert game vector embedding (Vector CREATE/UPDATE)
  */
 async function upsertGameVector(gameType, data) {
-    requireMongo();
+    await requireMongo();
     return GameVectorEmbedding.findOneAndUpdate(
         { gameType },
         { $set: data },
@@ -231,11 +236,12 @@ async function upsertGameVector(gameType, data) {
  * Delete game vector embedding (Vector DELETE)
  */
 async function deleteGameVector(gameType) {
-    requireMongo();
+    await requireMongo();
     return GameVectorEmbedding.deleteOne({ gameType });
 }
 
 module.exports = {
+    requireMongo,
     logGameEvent,
     getGameAnalytics,
     getDailyAnalytics,

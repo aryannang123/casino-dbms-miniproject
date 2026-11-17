@@ -41,6 +41,19 @@ function handleError(res, err) {
 }
 
 // =====================================================
+// Get all game logs (NoSQL document store)
+router.get('/games/all', authenticate, async (req, res) => {
+    try {
+        const { requireMongo } = require('../controllers/analyticsController');
+        await requireMongo();
+        const { GameLog } = require('../config/mongodb');
+        const logs = await GameLog.find({}).sort({ startTime: -1 }).limit(20).lean();
+        return res.json({ success: true, data: logs });
+    } catch (err) {
+        return handleError(res, err);
+    }
+});
+
 // Daily & Game Event Analytics
 // =====================================================
 router.get('/daily/:date', authenticate, async (req, res) => {

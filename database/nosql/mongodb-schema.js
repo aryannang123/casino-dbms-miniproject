@@ -12,7 +12,16 @@
  * 4. Dense Vector Embeddings for AI Game Recommendations & Player Clustering (GameVectorEmbedding & PlayerPreferenceVector)
  */
 
-const mongoose = require('mongoose');
+let mongoose;
+try {
+    mongoose = require(require('path').join(__dirname, '../../backend/node_modules/mongoose'));
+} catch (e) {
+    try {
+        mongoose = require('mongoose');
+    } catch (e2) {
+        throw new Error('Could not resolve mongoose: ' + e.message);
+    }
+}
 
 // =====================================================
 // 1. GameLog Schema (Nested Event Stream)

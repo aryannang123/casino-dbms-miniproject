@@ -27,8 +27,8 @@ INSERT INTO CASINO_TABLE (table_number, game_type, minimum_bet, maximum_bet, sta
 ('PK-02', 'POKER', 50.00, 5000.00, 'AVAILABLE', 9),
 ('RT-01', 'ROULETTE', 5.00, 500.00, 'AVAILABLE', 8),
 ('RT-02', 'ROULETTE', 10.00, 1000.00, 'AVAILABLE', 8),
-('CR-01', 'CRAPS', 10.00, 500.00, 'AVAILABLE', 10),
-('BC-01', 'BACCARAT', 25.00, 2000.00, 'AVAILABLE', 8),
+('CR-01', 'CRAPS', 10.00, 500.00, 'OCCUPIED', 10),
+('BC-01', 'BACCARAT', 25.00, 2000.00, 'OCCUPIED', 8),
 ('SL-01', 'SLOTS', 1.00, 100.00, 'AVAILABLE', 1);
 
 -- =====================================================

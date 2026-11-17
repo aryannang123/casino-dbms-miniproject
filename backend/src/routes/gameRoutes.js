@@ -14,6 +14,7 @@ router.get('/:id', authenticate, idParamValidation, gameController.getGame);
 router.get('/:id/bets', authenticate, idParamValidation, paginationValidation, gameController.getGameBets);
 
 // Dealer/Admin routes
+router.get('/dealers/list', authenticate, authorize('DEALER', 'ADMIN'), gameController.getDealers);
 router.post('/', authenticate, authorize('DEALER', 'ADMIN'), createGameValidation, gameController.createGame);
 router.put('/:id/end', authenticate, authorize('DEALER', 'ADMIN'), idParamValidation, gameController.endGame);
 

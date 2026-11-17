@@ -19,6 +19,12 @@ export default function AdminPortal() {
   const [targetPlayerId, setTargetPlayerId] = useState('');
   const [newRole, setNewRole] = useState('DEALER');
 
+  // MongoDB NoSQL Analytics State
+  const [dailyData, setDailyData] = useState(null);
+  const [gameLogs, setGameLogs] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('2024-10-20');
+  const [mongoLoading, setMongoLoading] = useState(false);
+
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
@@ -44,9 +50,31 @@ export default function AdminPortal() {
     }
   };
 
+  const loadMongoAnalytics = async (dateStr) => {
+    try {
+      setMongoLoading(true);
+      const [dailyRes, logsRes] = await Promise.all([
+        api.get(`/analytics/daily/${dateStr || selectedDate}`).catch(() => ({ data: { success: false, data: null } })),
+        api.get('/analytics/games/all').catch(() => ({ data: { success: false, data: [] } }))
+      ]);
+
+      if (dailyRes.data.success && dailyRes.data.data) {
+        setDailyData(dailyRes.data.data);
+      }
+      if (logsRes.data.success && Array.isArray(logsRes.data.data)) {
+        setGameLogs(logsRes.data.data);
+      }
+    } catch (err) {
+      console.warn('Admin MongoDB fetch error:', err);
+    } finally {
+      setMongoLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && isAdmin) {
       loadPlayers();
+      loadMongoAnalytics(selectedDate);
     }
   }, [isAuthenticated, isAdmin]);
 
@@ -90,6 +118,29 @@ export default function AdminPortal() {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to assign role.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevokeRole = async (playerId, roleName) => {
+    if (!confirm(`Are you sure you want to revoke the ${roleName} role from Player #${playerId}?`)) return;
+
+    try {
+      setActionLoading(true);
+      setError('');
+      setSuccess('');
+      const res = await api.post('/auth/revoke-role', {
+        playerId: parseInt(playerId),
+        roleName
+      });
+
+      if (res.data.success) {
+        setSuccess(res.data.message || `Role ${roleName} revoked.`);
+        await loadPlayers();
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to revoke role.');
     } finally {
       setActionLoading(false);
     }
@@ -222,17 +273,27 @@ export default function AdminPortal() {
                     <p className="text-gray-400 text-xs">{p.email} &bull; {p.phone}</p>
                   </td>
                   <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 items-center">
                       {p.roles?.map((r) => (
                         <span
                           key={r}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                             r === 'ADMIN' ? 'bg-gold/20 text-gold border border-gold/40' :
                             r === 'DEALER' ? 'bg-casino-red/20 text-casino-red-light border border-casino-red/40' :
                             'bg-white/10 text-gray-300'
                           }`}
                         >
                           {r}
+                          {r !== 'PLAYER' && (
+                            <button
+                              onClick={() => handleRevokeRole(p.player_id, r)}
+                              title={`Revoke ${r} role`}
+                              disabled={actionLoading}
+                              className="ml-0.5 text-gray-400 hover:text-red-400 font-normal transition-colors"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </span>
                       ))}
                     </div>

@@ -164,22 +164,16 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Wallet not found for player';
     END IF;
 
-    -- Update balance
+    -- Update balance (Triggers trigger_record_wallet_increase automatically log to TRANSACTION table)
     UPDATE WALLET 
     SET balance = balance + p_amount
     WHERE wallet_id = v_wallet_id;
     
     SELECT balance INTO v_balance_after FROM WALLET WHERE wallet_id = v_wallet_id;
 
-    -- Create transaction record
-    INSERT INTO TRANSACTION (wallet_id, transaction_type, amount, description, balance_before, balance_after)
-    VALUES (v_wallet_id, 'DEPOSIT', p_amount, p_description, v_balance_before, v_balance_after);
-    
-    SET v_transaction_id = LAST_INSERT_ID();
-
     COMMIT;
     
-    SELECT v_wallet_id as wallet_id, v_balance_after as new_balance, v_transaction_id as transaction_id;
+    SELECT v_wallet_id as wallet_id, v_balance_after as new_balance;
 END$$
 
 -- =====================================================
@@ -222,22 +216,16 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient balance';
     END IF;
 
-    -- Update balance
+    -- Update balance (Triggers trigger_record_wallet_decrease automatically log to TRANSACTION table)
     UPDATE WALLET 
     SET balance = balance - p_amount
     WHERE wallet_id = v_wallet_id;
     
     SELECT balance INTO v_balance_after FROM WALLET WHERE wallet_id = v_wallet_id;
 
-    -- Create transaction record
-    INSERT INTO TRANSACTION (wallet_id, transaction_type, amount, description, balance_before, balance_after)
-    VALUES (v_wallet_id, 'WITHDRAWAL', -p_amount, p_description, v_balance_before, v_balance_after);
-    
-    SET v_transaction_id = LAST_INSERT_ID();
-
     COMMIT;
     
-    SELECT v_wallet_id as wallet_id, v_balance_after as new_balance, v_transaction_id as transaction_id;
+    SELECT v_wallet_id as wallet_id, v_balance_after as new_balance;
 END$$
 
 -- =====================================================

@@ -11,6 +11,8 @@ export default function DealerPortal() {
 
   const [games, setGames] = useState([]);
   const [tables, setTables] = useState([]);
+  const [dealers, setDealers] = useState([]);
+  const [selectedDealerId, setSelectedDealerId] = useState('');
   const [selectedGame, setSelectedGame] = useState(null);
   const [gameBets, setGameBets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,14 @@ export default function DealerPortal() {
   // New Game Modal Form
   const [newGameTableId, setNewGameTableId] = useState('');
   const [newGameType, setNewGameType] = useState('BLACKJACK');
+
+  const handleTableSelect = (tableId) => {
+    setNewGameTableId(tableId);
+    const selected = tables.find(t => String(t.table_id) === String(tableId));
+    if (selected?.game_type) {
+      setNewGameType(selected.game_type);
+    }
+  };
 
   // Settle Bet Form
   const [settleBetId, setSettleBetId] = useState(null);
@@ -40,9 +50,10 @@ export default function DealerPortal() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [gamesRes, tablesRes] = await Promise.all([
+      const [gamesRes, tablesRes, dealersRes] = await Promise.all([
         api.get('/games?limit=50'),
-        api.get('/tables')
+        api.get('/tables/available'),
+        api.get('/games/dealers/list').catch(() => ({ data: { success: false, data: [] } }))
       ]);
 
       if (gamesRes.data.success) {
@@ -50,6 +61,13 @@ export default function DealerPortal() {
       }
       if (tablesRes.data.success) {
         setTables(tablesRes.data.data.tables || tablesRes.data.data || []);
+      }
+      if (dealersRes.data.success) {
+        const dealerList = dealersRes.data.data || [];
+        setDealers(dealerList);
+        if (dealerList.length > 0 && !selectedDealerId) {
+          setSelectedDealerId(String(dealerList[0].dealer_id));
+        }
       }
     } catch (err) {
       console.error('Error loading dealer data:', err);
@@ -91,7 +109,7 @@ export default function DealerPortal() {
       setSuccess('');
       const res = await api.post('/games', {
         tableId: parseInt(newGameTableId),
-        dealerId: user.dealerId || user.playerId || 1,
+        dealerId: parseInt(selectedDealerId || user.dealerId || 1),
         gameType: newGameType
       });
 
@@ -212,37 +230,47 @@ export default function DealerPortal() {
         <h2 className="text-lg font-bold text-white font-display mb-4 flex items-center gap-2">
           <span>🎲</span> Open New Table Session
         </h2>
-        <form onSubmit={handleStartGame} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleStartGame} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-300 mb-1">Select Available Table</label>
             <select
               value={newGameTableId}
-              onChange={(e) => setNewGameTableId(e.target.value)}
+              onChange={(e) => handleTableSelect(e.target.value)}
               className="w-full px-3 py-2.5 bg-casino-dark border border-casino-border rounded-lg text-white text-sm focus:border-gold focus:outline-none"
               required
             >
               <option value="">-- Choose a table --</option>
               {tables.map(t => (
                 <option key={t.table_id} value={t.table_id}>
-                  {t.table_number} ({t.game_type}) &bull; Limits: ${t.minimum_bet} - ${t.maximum_bet} &bull; [{t.status}]
+                  {t.table_number} ({t.game_type}) &bull; Limits: ₹{t.minimum_bet} - ₹{t.maximum_bet}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1">Game Variant</label>
-            <select
+            <label className="block text-xs font-medium text-gray-300 mb-1">Assigned Game Variant</label>
+            <input
+              type="text"
               value={newGameType}
-              onChange={(e) => setNewGameType(e.target.value)}
+              readOnly
+              className="w-full px-3 py-2.5 bg-white/5 border border-casino-border rounded-lg text-gold font-semibold text-sm cursor-not-allowed focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Select Dealer</label>
+            <select
+              value={selectedDealerId}
+              onChange={(e) => setSelectedDealerId(e.target.value)}
               className="w-full px-3 py-2.5 bg-casino-dark border border-casino-border rounded-lg text-white text-sm focus:border-gold focus:outline-none"
+              required
             >
-              <option value="BLACKJACK">BLACKJACK</option>
-              <option value="POKER">POKER</option>
-              <option value="ROULETTE">ROULETTE</option>
-              <option value="CRAPS">CRAPS</option>
-              <option value="BACCARAT">BACCARAT</option>
-              <option value="SLOTS">SLOTS</option>
+              {dealers.map(d => (
+                <option key={d.dealer_id} value={d.dealer_id}>
+                  {d.name} ({d.shift})
+                </option>
+              ))}
             </select>
           </div>
 

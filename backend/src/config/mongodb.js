@@ -19,8 +19,8 @@ let isConnected = false;
  * @returns {Promise<void>}
  */
 async function connectMongoDB() {
-    if (isConnected) {
-        console.log('ℹ️  MongoDB already connected.');
+    if (mongoose.connection.readyState === 1) {
+        isConnected = true;
         return;
     }
 
@@ -55,9 +55,11 @@ async function connectMongoDB() {
         process.on('SIGTERM', () => gracefulDisconnect('SIGTERM'));
 
     } catch (err) {
+        isConnected = false;
         console.error('❌  MongoDB connection failed:', err.message);
         // Do NOT crash the server — MySQL can still function independently
         console.warn('   → Continuing without MongoDB. Analytics endpoints will return 503.');
+        throw err;
     }
 }
 
@@ -79,7 +81,14 @@ function isMongoConnected() {
 }
 
 // ─── Re-export models so controllers only need one import ─────────────────────
-const { GameLog, PlayerActivity, CasinoAnalytics } = require('../../../database/nosql/mongodb-schema');
+const { 
+    GameLog, 
+    PlayerActivity, 
+    CasinoAnalytics,
+    GameVectorEmbedding,
+    PlayerPreferenceVector,
+    cosineSimilarity
+} = require('../../../database/nosql/mongodb-schema');
 
 module.exports = {
     connectMongoDB,
@@ -87,5 +96,9 @@ module.exports = {
     // Mongoose models
     GameLog,
     PlayerActivity,
-    CasinoAnalytics
+    CasinoAnalytics,
+    GameVectorEmbedding,
+    PlayerPreferenceVector,
+    // Math helpers
+    cosineSimilarity
 };

@@ -8,7 +8,8 @@ const {
     logout,
     getAllPlayers,
     updatePlayerStatus,
-    assignRole
+    assignRole,
+    revokeRole
 } = require('../controllers/authController');
 
 const { authenticate, authorize } = require('../middleware/auth');
@@ -25,5 +26,6 @@ router.post('/logout', authenticate, logout);
 router.get('/players', authenticate, authorize('ADMIN'), getAllPlayers);
 router.patch('/players/:id/status', authenticate, authorize('ADMIN'), updatePlayerStatus);
 router.post('/assign-role', authenticate, authorize('ADMIN'), assignRole);
+router.post('/revoke-role', authenticate, authorize('ADMIN'), revokeRole);
 
 module.exports = router;

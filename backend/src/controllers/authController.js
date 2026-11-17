@@ -312,6 +312,37 @@ const assignRole = async (req, res) => {
     }
 };
 
+// Admin: Revoke role from player
+const revokeRole = async (req, res) => {
+    try {
+        const { playerId, roleName } = req.body;
+        const { query } = require('../config/database');
+
+        if (roleName === 'PLAYER') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot revoke base PLAYER role.'
+            });
+        }
+
+        const roleResult = await query('SELECT role_id FROM ROLE WHERE role_name = ?', [roleName]);
+        if (roleResult.rows.length === 0) {
+            return res.status(400).json({ success: false, message: 'Invalid role name' });
+        }
+
+        const roleId = roleResult.rows[0].role_id;
+        await query('DELETE FROM USER_ROLE WHERE player_id = ? AND role_id = ?', [playerId, roleId]);
+
+        res.json({
+            success: true,
+            message: `Role ${roleName} revoked successfully from player #${playerId}.`
+        });
+    } catch (error) {
+        console.error('Revoke role error:', error);
+        res.status(500).json({ success: false, message: 'Failed to revoke role.', error: error.message });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -319,5 +350,6 @@ module.exports = {
     logout,
     getAllPlayers,
     updatePlayerStatus,
-    assignRole
+    assignRole,
+    revokeRole
 };

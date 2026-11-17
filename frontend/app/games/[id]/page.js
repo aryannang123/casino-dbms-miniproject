@@ -74,7 +74,7 @@ export default function GameDetailPage() {
       setBetType('');
       // Refresh wallet balance
       const w = await walletAPI.balance();
-      setWallet(w.data);
+      setWallet(w.data?.data || w.data);
     } catch (err) {
       setBetError(err.response?.data?.message || 'Failed to place bet. Please try again.');
     } finally {
