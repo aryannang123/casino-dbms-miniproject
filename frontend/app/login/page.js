@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthProvider';
 
 export default function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isDealerOnly, isDealer, isAdmin } = useAuth();
   const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -14,7 +14,9 @@ export default function LoginPage() {
 
   // Already logged in — redirect
   if (isAuthenticated) {
-    router.replace('/dashboard');
+    if (isAdmin) router.replace('/admin');
+    else if (isDealerOnly) router.replace('/dealer');
+    else router.replace('/dashboard');
     return null;
   }
 
@@ -32,9 +34,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
-      if (user?.role === 'ADMIN') router.push('/admin');
-      else if (user?.role === 'DEALER') router.push('/dealer');
-      else router.push('/dashboard');
+      const roles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+      if (roles.includes('ADMIN') || user?.role === 'ADMIN') {
+        router.push('/admin');
+      } else if (roles.includes('DEALER') && !roles.includes('PLAYER')) {
+        router.push('/dealer');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password.');
     } finally {

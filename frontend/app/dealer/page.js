@@ -64,7 +64,11 @@ export default function DealerPortal() {
       if (dealersRes.data.success) {
         const dealerList = dealersRes.data.data || [];
         setDealers(dealerList);
-        if (dealerList.length > 0 && !selectedDealerId) {
+        // Automatically link logged-in user to their dealer profile if names match
+        const matchingDealer = dealerList.find(d => d.name?.toLowerCase() === user?.name?.toLowerCase());
+        if (matchingDealer) {
+          setSelectedDealerId(String(matchingDealer.dealer_id));
+        } else if (dealerList.length > 0 && !selectedDealerId) {
           setSelectedDealerId(String(dealerList[0].dealer_id));
         }
       }
@@ -207,7 +211,14 @@ export default function DealerPortal() {
     );
   }
 
-  const activeGames = games.filter(g => g.status === 'ACTIVE');
+  const activeGames = games.filter(g => {
+    if (g.status !== 'ACTIVE') return false;
+    // If dealer is logged in (and not an admin), only show games hosted by them
+    if (!isAdmin && user?.name) {
+      return g.dealer_name?.toLowerCase() === user.name.toLowerCase();
+    }
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
@@ -279,19 +290,13 @@ export default function DealerPortal() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1">Select Dealer</label>
-            <select
-              value={selectedDealerId}
-              onChange={(e) => setSelectedDealerId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-casino-dark border border-casino-border rounded-lg text-white text-sm focus:border-gold focus:outline-none"
-              required
-            >
-              {dealers.map(d => (
-                <option key={d.dealer_id} value={d.dealer_id}>
-                  {d.name} ({d.employee_id})
-                </option>
-              ))}
-            </select>
+            <label className="block text-xs font-medium text-gray-300 mb-1">Host Dealer</label>
+            <input
+              type="text"
+              value={dealers.find(d => String(d.dealer_id) === String(selectedDealerId))?.name || user?.name || 'Assigned Dealer'}
+              readOnly
+              className="w-full px-3 py-2.5 bg-white/5 border border-casino-border rounded-lg text-white font-medium text-sm cursor-not-allowed focus:outline-none"
+            />
           </div>
 
           <div className="flex items-end">

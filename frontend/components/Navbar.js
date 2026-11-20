@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 
 export default function Navbar() {
-  const { user, isAuthenticated, isAdmin, isDealer, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isDealer, isPlayer, isDealerOnly, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,9 +39,14 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-1">
             {isAuthenticated ? (
               <>
-                <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>
-                <Link href="/games" className={linkClass('/games')}>Games</Link>
-                <Link href="/wallet" className={linkClass('/wallet')}>Wallet</Link>
+                {!isAdmin && !isDealerOnly && <Link href="/dashboard" className={linkClass('/dashboard')}>Dashboard</Link>}
+                {!isAdmin && !isDealerOnly && <Link href="/games" className={linkClass('/games')}>Games</Link>}
+                {!isAdmin && <Link href="/wallet" className={linkClass('/wallet')}>Wallet</Link>}
+                {isAdmin && (
+                  <Link href="/admin" className={linkClass('/admin')}>
+                    <span className="text-gold font-bold">Admin Console</span>
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link href="/analytics" className={linkClass('/analytics')}>
                     <span className="text-emerald-400 font-medium">MongoDB NoSQL</span>
@@ -49,12 +54,7 @@ export default function Navbar() {
                 )}
                 {isDealer && (
                   <Link href="/dealer" className={linkClass('/dealer')}>
-                    <span className="text-casino-red-light font-bold">Dealer</span>
-                  </Link>
-                )}
-                {isAdmin && (
-                  <Link href="/admin" className={linkClass('/admin')}>
-                    <span className="text-gold font-bold">Admin</span>
+                    <span className="text-casino-red-light font-bold">Dealer Console</span>
                   </Link>
                 )}
                 <div className="ml-4 flex items-center gap-3 border-l border-casino-border pl-4">
@@ -67,7 +67,7 @@ export default function Navbar() {
                     isDealer ? 'bg-casino-red/20 text-casino-red-light border border-casino-red/40' :
                     'bg-white/10 text-gray-300 border border-white/20'
                   }`}>
-                    {user?.role}
+                    {Array.isArray(user?.roles) ? user.roles.join(', ') : (user?.role || 'PLAYER')}
                   </span>
                   <button
                     onClick={handleLogout}
@@ -112,14 +112,14 @@ export default function Navbar() {
                     isAdmin ? 'bg-gold/20 text-gold' :
                     isDealer ? 'bg-casino-red/20 text-casino-red-light' :
                     'bg-white/10 text-gray-300'
-                  }`}>{user?.role}</span>
+                  }`}>{Array.isArray(user?.roles) ? user.roles.join(', ') : (user?.role || 'PLAYER')}</span>
                 </div>
-                <Link href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMenuOpen(false)}>Dashboard</Link>
-                <Link href="/games" className={linkClass('/games')} onClick={() => setMenuOpen(false)}>Games</Link>
-                <Link href="/wallet" className={linkClass('/wallet')} onClick={() => setMenuOpen(false)}>Wallet</Link>
+                {!isAdmin && !isDealerOnly && <Link href="/dashboard" className={linkClass('/dashboard')} onClick={() => setMenuOpen(false)}>Dashboard</Link>}
+                {!isAdmin && !isDealerOnly && <Link href="/games" className={linkClass('/games')} onClick={() => setMenuOpen(false)}>Games</Link>}
+                {!isAdmin && <Link href="/wallet" className={linkClass('/wallet')} onClick={() => setMenuOpen(false)}>Wallet</Link>}
+                {isAdmin && <Link href="/admin" className={linkClass('/admin')} onClick={() => setMenuOpen(false)}>Admin Console</Link>}
                 {isAdmin && <Link href="/analytics" className={linkClass('/analytics')} onClick={() => setMenuOpen(false)}>MongoDB NoSQL</Link>}
                 {isDealer && <Link href="/dealer" className={linkClass('/dealer')} onClick={() => setMenuOpen(false)}>Dealer Panel</Link>}
-                {isAdmin && <Link href="/admin" className={linkClass('/admin')} onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
                 <button onClick={handleLogout} className="mt-2 w-full text-left px-3 py-2 text-sm text-casino-red-light hover:bg-casino-red/10 rounded-md transition-colors">
                   Logout
                 </button>

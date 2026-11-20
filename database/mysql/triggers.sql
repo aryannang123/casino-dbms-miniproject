@@ -266,6 +266,88 @@ BEGIN
     END IF;
 END$$
 
+-- =====================================================
+-- TRIGGER 14: Auto-sync player into DEALER table on DEALER role assignment
+-- =====================================================
+DROP TRIGGER IF EXISTS trigger_sync_dealer_on_role_assign$$
+
+CREATE TRIGGER trigger_sync_dealer_on_role_assign
+    AFTER INSERT ON USER_ROLE
+    FOR EACH ROW
+BEGIN
+    DECLARE v_role_name VARCHAR(20);
+    DECLARE v_player_name VARCHAR(100);
+    DECLARE v_emp_code VARCHAR(20);
+    
+    SELECT role_name INTO v_role_name FROM ROLE WHERE role_id = NEW.role_id;
+    
+    IF v_role_name = 'DEALER' AND NEW.is_active = 1 THEN
+        SELECT name INTO v_player_name FROM PLAYER WHERE player_id = NEW.player_id;
+        
+        -- Only insert if not already present in DEALER table
+        IF NOT EXISTS (SELECT 1 FROM DEALER WHERE name = v_player_name) THEN
+            SET v_emp_code = CONCAT('EMP', LPAD(NEW.player_id + 10, 3, '0'));
+            INSERT INTO DEALER (name, employee_id, hire_date, status)
+            VALUES (v_player_name, v_emp_code, CURDATE(), 'ACTIVE');
+        END IF;
+    END IF;
+END$$
+
+-- =====================================================
+-- TRIGGER 15: Disallow Admin from holding PLAYER role (BEFORE INSERT on USER_ROLE)
+-- =====================================================
+DROP TRIGGER IF EXISTS trigger_prevent_admin_player_role$$
+
+CREATE TRIGGER trigger_prevent_admin_player_role
+    BEFORE INSERT ON USER_ROLE
+    FOR EACH ROW
+BEGIN
+    DECLARE v_new_role_name VARCHAR(20);
+    DECLARE v_has_admin INT DEFAULT 0;
+    
+    SELECT role_name INTO v_new_role_name FROM ROLE WHERE role_id = NEW.role_id;
+    
+    IF v_new_role_name = 'PLAYER' AND NEW.is_active = 1 THEN
+        SELECT COUNT(*) INTO v_has_admin
+        FROM USER_ROLE ur
+        JOIN ROLE r ON ur.role_id = r.role_id
+        WHERE ur.player_id = NEW.player_id AND r.role_name = 'ADMIN' AND ur.is_active = 1;
+        
+        IF v_has_admin > 0 THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Disallowed: An Administrator cannot be assigned the PLAYER role.';
+        END IF;
+    END IF;
+END$$
+
+-- =====================================================
+-- TRIGGER 16: Disallow Admin from holding PLAYER role (BEFORE UPDATE on USER_ROLE)
+-- =====================================================
+DROP TRIGGER IF EXISTS trigger_prevent_admin_player_role_update$$
+
+CREATE TRIGGER trigger_prevent_admin_player_role_update
+    BEFORE UPDATE ON USER_ROLE
+    FOR EACH ROW
+BEGIN
+    DECLARE v_new_role_name VARCHAR(20);
+    DECLARE v_has_admin INT DEFAULT 0;
+    
+    IF NEW.is_active = 1 THEN
+        SELECT role_name INTO v_new_role_name FROM ROLE WHERE role_id = NEW.role_id;
+        IF v_new_role_name = 'PLAYER' THEN
+            SELECT COUNT(*) INTO v_has_admin
+            FROM USER_ROLE ur
+            JOIN ROLE r ON ur.role_id = r.role_id
+            WHERE ur.player_id = NEW.player_id AND r.role_name = 'ADMIN' AND ur.is_active = 1;
+            
+            IF v_has_admin > 0 THEN
+                SIGNAL SQLSTATE '45000'
+                    SET MESSAGE_TEXT = 'Disallowed: An Administrator cannot be assigned the PLAYER role.';
+            END IF;
+        END IF;
+    END IF;
+END$$
+
 DELIMITER ;
 
 -- End of MySQL triggers.sql

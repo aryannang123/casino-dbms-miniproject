@@ -301,6 +301,22 @@ const assignRole = async (req, res) => {
         const { playerId, roleName } = req.body;
         const adminId = req.user.playerId;
 
+        // Validation: Admins cannot be assigned the PLAYER role
+        if (roleName === 'PLAYER') {
+            const adminCheck = await query(
+                `SELECT ur.user_role_id FROM USER_ROLE ur
+                 JOIN ROLE r ON ur.role_id = r.role_id
+                 WHERE ur.player_id = ? AND r.role_name = 'ADMIN' AND ur.is_active = 1`,
+                [playerId]
+            );
+            if (adminCheck.rows.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Disallowed: An Administrator cannot be assigned the PLAYER role.'
+                });
+            }
+        }
+
         // Call stored procedure
         const { callProcedure } = require('../config/database');
         const result = await callProcedure('assign_role', [playerId, roleName, adminId]);
@@ -308,6 +324,9 @@ const assignRole = async (req, res) => {
         res.json({ success: true, message: result.rows[0].message });
     } catch (error) {
         console.error('Assign role error:', error);
+        if (error.sqlMessage) {
+            return res.status(400).json({ success: false, message: error.sqlMessage });
+        }
         res.status(500).json({ success: false, message: 'Failed to assign role.', error: error.message });
     }
 };

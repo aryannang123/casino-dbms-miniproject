@@ -75,8 +75,8 @@ const getGame = async (req, res) => {
         const { id } = req.params;
 
         const result = await query(
-            `SELECT g.game_id, g.game_type, ct.table_number, d.name as dealer_name,
-                    g.start_time, g.end_time, g.status
+            `SELECT g.game_id, g.game_type, ct.table_number, ct.minimum_bet, ct.maximum_bet,
+                    d.name as dealer_name, g.start_time, g.end_time, g.status
              FROM GAME g
              JOIN CASINO_TABLE ct ON g.table_id = ct.table_id
              JOIN DEALER d ON g.dealer_id = d.dealer_id
@@ -116,12 +116,33 @@ const createGame = async (req, res) => {
         );
 
         const gameResult = result.rows[0];
+        const newGameId = gameResult.game_id;
+
+        // Async sync to MongoDB GameLog
+        (async () => {
+            try {
+                const { logGameEvent } = require('./analyticsController');
+                const tRes = await query('SELECT table_number FROM CASINO_TABLE WHERE table_id = ?', [tableId]);
+                const dRes = await query('SELECT name FROM DEALER WHERE dealer_id = ?', [dealerId]);
+                await logGameEvent(newGameId, 'GAME_STARTED', {
+                    tableId,
+                    dealerId,
+                    gameType
+                }, {
+                    gameType,
+                    tableNumber: tRes.rows[0]?.table_number || `TABLE-${tableId}`,
+                    dealerName: dRes.rows[0]?.name || 'Dealer'
+                });
+            } catch (mongoErr) {
+                console.warn('MongoDB game creation log warning:', mongoErr.message);
+            }
+        })();
 
         res.status(201).json({
             success: true,
             message: gameResult.message,
             data: {
-                gameId: gameResult.game_id,
+                gameId: newGameId,
                 tableId,
                 dealerId,
                 gameType
@@ -166,6 +187,21 @@ const endGame = async (req, res) => {
         );
 
         const endResult = result.rows[0];
+
+        // Async sync to MongoDB GameLog
+        (async () => {
+            try {
+                const { logGameEvent } = require('./analyticsController');
+                const { GameLog } = require('../config/mongodb');
+                await logGameEvent(parseInt(id, 10), 'GAME_ENDED', { status });
+                await GameLog.findOneAndUpdate(
+                    { gameId: parseInt(id, 10) },
+                    { status, endTime: new Date() }
+                );
+            } catch (mongoErr) {
+                console.warn('MongoDB game end log warning:', mongoErr.message);
+            }
+        })();
 
         res.json({
             success: true,

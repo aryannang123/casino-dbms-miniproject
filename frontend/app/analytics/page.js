@@ -4,6 +4,29 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../components/AuthProvider';
 import api from '../../lib/api';
 
+function EventDetailsBadge({ details }) {
+  if (!details || Object.keys(details).length === 0) return null;
+
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-1.5 p-2 bg-black/40 rounded-lg text-[11px] border border-white/5">
+      {details.table && <div><span className="text-gray-400">Table:</span> <span className="text-white font-medium">{details.table}</span></div>}
+      {details.dealer && <div><span className="text-gray-400">Dealer:</span> <span className="text-gold font-medium">{details.dealer}</span></div>}
+      {details.playerName && <div><span className="text-gray-400">Player:</span> <span className="text-white font-medium">{details.playerName}</span></div>}
+      {details.betType && <div><span className="text-gray-400">Bet Type:</span> <span className="text-purple-300 font-medium">{details.betType}</span></div>}
+      {details.wager !== undefined && <div><span className="text-gray-400">Wager:</span> <span className="text-gold font-semibold">₹{Number(details.wager).toLocaleString('en-IN')}</span></div>}
+      {details.payout !== undefined && Number(details.payout) > 0 && <div><span className="text-gray-400">Payout:</span> <span className="text-emerald-400 font-semibold">₹{Number(details.payout).toLocaleString('en-IN')}</span></div>}
+      {details.outcome && (
+        <div>
+          <span className="text-gray-400">Outcome:</span>{' '}
+          <span className={`font-bold ${details.outcome === 'WON' ? 'text-emerald-400' : 'text-red-400'}`}>
+            {details.outcome}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
 
@@ -255,11 +278,7 @@ export default function AnalyticsPage() {
                         <span>Player ID: #{ev.playerId || 'N/A'}</span>
                         {ev.amount > 0 && <span className="text-emerald-400 font-semibold font-mono">₹{ev.amount}</span>}
                       </div>
-                      {ev.details && Object.keys(ev.details).length > 0 && (
-                        <div className="mt-1.5 p-1.5 bg-black/40 rounded text-[10px] font-mono text-gray-400">
-                          {JSON.stringify(ev.details)}
-                        </div>
-                      )}
+                      <EventDetailsBadge details={ev.details} />
                     </div>
                   ))}
                 </div>

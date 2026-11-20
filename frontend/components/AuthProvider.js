@@ -70,9 +70,11 @@ export function AuthProvider({ children }) {
   }, [logout]);
 
   const isAuthenticated = !!token;
-  const isAdmin = user?.role === 'ADMIN';
-  const isDealer = user?.role === 'DEALER';
-  const isPlayer = user?.role === 'PLAYER';
+  const roles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+  const isAdmin = roles.includes('ADMIN') || user?.role === 'ADMIN';
+  const isDealer = roles.includes('DEALER') || user?.role === 'DEALER';
+  const isPlayer = roles.includes('PLAYER') || user?.role === 'PLAYER';
+  const isDealerOnly = isDealer && !isPlayer && !isAdmin;
 
   return (
     <AuthContext.Provider
@@ -84,6 +86,7 @@ export function AuthProvider({ children }) {
         isAdmin,
         isDealer,
         isPlayer,
+        isDealerOnly,
         login,
         register,
         logout,

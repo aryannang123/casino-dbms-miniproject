@@ -30,7 +30,7 @@ function StatusBadge({ status }) {
 }
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isDealerOnly, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [wallet, setWallet] = useState(null);
@@ -40,13 +40,19 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login');
+      } else if (isAdmin) {
+        router.replace('/admin');
+      } else if (isDealerOnly) {
+        router.replace('/dealer');
+      }
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, isDealerOnly, isAdmin, router]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isAdmin || isDealerOnly) return;
     const fetchAll = async () => {
       try {
         const [w, b, g] = await Promise.all([

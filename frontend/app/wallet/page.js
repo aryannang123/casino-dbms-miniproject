@@ -6,7 +6,7 @@ import { useAuth } from '../../components/AuthProvider';
 import api from '../../lib/api';
 
 export default function WalletPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [wallet, setWallet] = useState(null);
@@ -22,12 +22,17 @@ export default function WalletPage() {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else if (isAdmin) {
+        router.replace('/admin');
+      }
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, isAdmin, router]);
 
   const fetchWalletData = async () => {
+    if (isAdmin) return;
     try {
       setLoading(true);
       const [walletRes, transRes] = await Promise.all([

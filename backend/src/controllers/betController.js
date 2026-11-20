@@ -11,6 +11,23 @@ const placeBet = async (req, res) => {
 
         const betResult = result.rows[0];
 
+        // Async sync to MongoDB GameLog
+        (async () => {
+            try {
+                const { logGameEvent } = require('./analyticsController');
+                await logGameEvent(parseInt(gameId, 10), 'BET_PLACED', {
+                    betId: betResult.bet_id,
+                    betType,
+                    amount: parseFloat(amount)
+                }, {
+                    playerId,
+                    amount: parseFloat(amount)
+                });
+            } catch (mongoErr) {
+                console.warn('MongoDB bet log warning:', mongoErr.message);
+            }
+        })();
+
         res.status(201).json({
             success: true,
             message: betResult.message,
@@ -26,6 +43,14 @@ const placeBet = async (req, res) => {
         console.error('Place bet error:', error);
         
         // Handle specific database errors
+        if (error.sqlMessage) {
+            return res.status(400).json({
+                success: false,
+                message: error.sqlMessage,
+                error: error.sqlMessage
+            });
+        }
+
         if (error.message.includes('Insufficient balance')) {
             return res.status(400).json({
                 success: false,
@@ -184,6 +209,27 @@ const settleBet = async (req, res) => {
         const result = await callProcedure('settle_bet', [id, outcome, payout]);
 
         const settleResult = result.rows[0];
+
+        // Async sync to MongoDB GameLog
+        (async () => {
+            try {
+                const { logGameEvent } = require('./analyticsController');
+                const bInfo = await query('SELECT game_id FROM BET WHERE bet_id = ?', [id]);
+                const gId = bInfo.rows[0]?.game_id;
+                if (gId) {
+                    await logGameEvent(gId, outcome === 'WON' ? 'PAYOUT_ISSUED' : 'BET_LOST', {
+                        betId: id,
+                        outcome,
+                        payout: parseFloat(payout || 0)
+                    }, {
+                        playerId: settleResult.player_id,
+                        amount: outcome === 'WON' ? parseFloat(payout || 0) : 0
+                    });
+                }
+            } catch (mongoErr) {
+                console.warn('MongoDB settle log warning:', mongoErr.message);
+            }
+        })();
 
         res.json({
             success: true,
