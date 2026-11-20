@@ -135,46 +135,21 @@ END$$
 
 -- =====================================================
 -- TRIGGER 7: Deduct bet amount from wallet AFTER bet insert
+-- Note: In MySQL, the stored procedure `place_bet` atomically manages wallet
+-- balance deduction inside its transaction with rollback support.
+-- To prevent double-deduction (procedure + trigger both deducting), this trigger
+-- is dropped so the stored procedure is the single source of truth.
 -- =====================================================
 DROP TRIGGER IF EXISTS trigger_deduct_bet_from_wallet$$
 
-CREATE TRIGGER trigger_deduct_bet_from_wallet
-    AFTER INSERT ON BET
-    FOR EACH ROW
-BEGIN
-    UPDATE WALLET
-    SET balance = balance - NEW.amount
-    WHERE player_id = NEW.player_id;
-END$$
-
 -- =====================================================
 -- TRIGGER 8: Credit payout to wallet when bet is WON
+-- Note: In MySQL, the stored procedure `settle_bet` atomically manages wallet
+-- payout crediting inside its transaction with rollback support.
+-- To prevent double-crediting (procedure + trigger both crediting), this trigger
+-- is dropped so the stored procedure is the single source of truth.
 -- =====================================================
 DROP TRIGGER IF EXISTS trigger_credit_payout_to_wallet$$
-
-CREATE TRIGGER trigger_credit_payout_to_wallet
-    AFTER UPDATE ON BET
-    FOR EACH ROW
-BEGIN
-    IF NEW.outcome = 'WON' AND OLD.outcome = 'PENDING' AND NEW.payout > 0 THEN
-        UPDATE WALLET
-        SET balance = balance + NEW.payout
-        WHERE player_id = NEW.player_id;
-
-        -- Also log the payout transaction explicitly
-        INSERT INTO TRANSACTION (wallet_id, transaction_type, amount, description, reference_id, balance_before, balance_after)
-        SELECT
-            w.wallet_id,
-            'PAYOUT',
-            NEW.payout,
-            CONCAT('Payout for winning bet #', NEW.bet_id),
-            NEW.bet_id,
-            w.balance - NEW.payout,
-            w.balance
-        FROM WALLET w
-        WHERE w.player_id = NEW.player_id;
-    END IF;
-END$$
 
 -- =====================================================
 -- TRIGGER 9: Update table status when game starts or ends

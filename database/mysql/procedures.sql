@@ -278,6 +278,134 @@ BEGIN
     GROUP BY p.player_id, p.name, w.balance;
 END$$
 
+-- =====================================================
+-- PROCEDURE 6: Create a new game session (Dealer only)
+-- =====================================================
+
+DROP PROCEDURE IF EXISTS create_game$$
+
+CREATE PROCEDURE create_game(
+    IN p_table_id INT,
+    IN p_dealer_id INT,
+    IN p_game_type VARCHAR(20)
+)
+BEGIN
+    DECLARE v_game_id INT;
+    DECLARE v_table_status VARCHAR(20);
+    DECLARE v_dealer_status VARCHAR(20);
+    DECLARE exit handler for sqlexception
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Validate table status
+    SELECT status INTO v_table_status 
+    FROM CASINO_TABLE 
+    WHERE table_id = p_table_id FOR UPDATE;
+
+    IF v_table_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table not found';
+    END IF;
+
+    IF v_table_status != 'AVAILABLE' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Table is not available';
+    END IF;
+
+    -- Validate dealer status
+    SELECT status INTO v_dealer_status 
+    FROM DEALER 
+    WHERE dealer_id = p_dealer_id;
+
+    IF v_dealer_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dealer not found';
+    END IF;
+
+    IF v_dealer_status != 'ACTIVE' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dealer is not active';
+    END IF;
+
+    -- Insert new game session
+    INSERT INTO GAME (table_id, dealer_id, game_type, status, start_time)
+    VALUES (p_table_id, p_dealer_id, p_game_type, 'ACTIVE', CURRENT_TIMESTAMP);
+
+    SET v_game_id = LAST_INSERT_ID();
+
+    -- Update table status to OCCUPIED
+    UPDATE CASINO_TABLE 
+    SET status = 'OCCUPIED'
+    WHERE table_id = p_table_id;
+
+    COMMIT;
+
+    -- Return result
+    SELECT v_game_id AS game_id, 'Game created successfully' AS message;
+END$$
+
+-- =====================================================
+-- PROCEDURE 7: End a game session (Dealer only)
+-- =====================================================
+
+DROP PROCEDURE IF EXISTS end_game$$
+
+CREATE PROCEDURE end_game(
+    IN p_game_id INT,
+    IN p_status VARCHAR(20)
+)
+BEGIN
+    DECLARE v_table_id INT;
+    DECLARE v_current_status VARCHAR(20);
+    DECLARE v_pending_bets INT DEFAULT 0;
+    DECLARE exit handler for sqlexception
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Validate game exists
+    SELECT status, table_id INTO v_current_status, v_table_id 
+    FROM GAME 
+    WHERE game_id = p_game_id FOR UPDATE;
+
+    IF v_current_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Game not found';
+    END IF;
+
+    IF v_current_status != 'ACTIVE' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Game is not active';
+    END IF;
+
+    -- Count pending bets
+    SELECT COUNT(*) INTO v_pending_bets 
+    FROM BET 
+    WHERE game_id = p_game_id AND outcome = 'PENDING';
+
+    -- Default status to COMPLETED if not provided
+    IF p_status IS NULL OR p_status = '' THEN
+        SET p_status = 'COMPLETED';
+    END IF;
+
+    -- Update game status and end time
+    UPDATE GAME 
+    SET status = p_status,
+        end_time = CURRENT_TIMESTAMP
+    WHERE game_id = p_game_id;
+
+    -- Release table back to AVAILABLE
+    UPDATE CASINO_TABLE 
+    SET status = 'AVAILABLE'
+    WHERE table_id = v_table_id;
+
+    COMMIT;
+
+    -- Return result
+    SELECT p_game_id AS game_id, v_pending_bets AS pending_bets, 'Game ended successfully' AS message;
+END$$
+
 DELIMITER ;
 
 -- End of MySQL procedures.sql
