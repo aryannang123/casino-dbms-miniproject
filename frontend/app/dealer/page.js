@@ -35,7 +35,6 @@ export default function DealerPortal() {
   // Settle Bet Form
   const [settleBetId, setSettleBetId] = useState(null);
   const [settleOutcome, setSettleOutcome] = useState('WON');
-  const [settlePayout, setSettlePayout] = useState('');
 
   useEffect(() => {
     if (!authLoading) {
@@ -146,6 +145,29 @@ export default function DealerPortal() {
     }
   };
 
+  const handleQuickSettle = async (betId, outcome) => {
+    try {
+      setActionLoading(true);
+      setError('');
+      setSuccess('');
+
+      const res = await api.put(`/bets/${betId}/settle`, { outcome });
+
+      if (res.data.success) {
+        const payout = res.data.data?.payout ?? 0;
+        setSuccess(`Bet #${betId} settled as ${outcome}! Payout of ₹${payout} credited.`);
+        setSettleBetId(null);
+        if (selectedGame) {
+          await selectGame(selectedGame);
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to settle bet.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleSettleBet = async (e) => {
     e.preventDefault();
     if (!settleBetId) return;
@@ -155,16 +177,14 @@ export default function DealerPortal() {
       setError('');
       setSuccess('');
 
-      const payoutNum = settleOutcome === 'WON' ? parseFloat(settlePayout || 0) : 0;
       const res = await api.put(`/bets/${settleBetId}/settle`, {
-        outcome: settleOutcome,
-        payout: payoutNum
+        outcome: settleOutcome
       });
 
       if (res.data.success) {
-        setSuccess(`Bet #${settleBetId} settled as ${settleOutcome}!`);
+        const payout = res.data.data?.payout ?? 0;
+        setSuccess(`Bet #${settleBetId} settled as ${settleOutcome}! Payout of ₹${payout} credited.`);
         setSettleBetId(null);
-        setSettlePayout('');
         if (selectedGame) {
           await selectGame(selectedGame);
         }
@@ -268,7 +288,7 @@ export default function DealerPortal() {
             >
               {dealers.map(d => (
                 <option key={d.dealer_id} value={d.dealer_id}>
-                  {d.name} ({d.shift})
+                  {d.name} ({d.employee_id})
                 </option>
               ))}
             </select>
@@ -378,7 +398,7 @@ export default function DealerPortal() {
                           <tr key={bet.bet_id} className="hover:bg-white/5">
                             <td className="py-2.5 px-3 font-mono">#{bet.bet_id}</td>
                             <td className="py-2.5 px-3 text-white font-medium">{bet.player_name || `Player #${bet.player_id}`}</td>
-                            <td className="py-2.5 px-3 text-gold font-bold">${parseFloat(bet.amount).toFixed(2)}</td>
+                            <td className="py-2.5 px-3 text-gold font-bold">₹{parseFloat(bet.amount).toFixed(2)}</td>
                             <td className="py-2.5 px-3 text-gray-300">{bet.bet_type}</td>
                             <td className="py-2.5 px-3">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -391,18 +411,38 @@ export default function DealerPortal() {
                             </td>
                             <td className="py-2.5 px-3 text-right">
                               {bet.outcome === 'PENDING' ? (
-                                <button
-                                  onClick={() => {
-                                    setSettleBetId(bet.bet_id);
-                                    setSettlePayout((parseFloat(bet.amount) * 2).toFixed(2));
-                                  }}
-                                  className="px-2.5 py-1 bg-gold/20 text-gold border border-gold/40 rounded hover:bg-gold hover:text-black font-bold transition-colors"
-                                >
-                                  Settle
-                                </button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleQuickSettle(bet.bet_id, 'WON')}
+                                    disabled={actionLoading}
+                                    title="Mark as WON (Auto-credits 2x payout)"
+                                    className="px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/40 rounded hover:bg-green-500 hover:text-black font-bold text-[11px] transition-colors disabled:opacity-40"
+                                  >
+                                    ✓ Won
+                                  </button>
+                                  <button
+                                    onClick={() => handleQuickSettle(bet.bet_id, 'LOST')}
+                                    disabled={actionLoading}
+                                    title="Mark as LOST"
+                                    className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/40 rounded hover:bg-red-500 hover:text-white font-bold text-[11px] transition-colors disabled:opacity-40"
+                                  >
+                                    ✗ Lost
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSettleBetId(bet.bet_id);
+                                      setSettleOutcome('WON');
+                                    }}
+                                    disabled={actionLoading}
+                                    title="More settlement options"
+                                    className="px-2 py-1 bg-white/5 text-gray-300 border border-casino-border rounded hover:border-gold hover:text-gold text-[11px] transition-colors disabled:opacity-40"
+                                  >
+                                    Options
+                                  </button>
+                                </div>
                               ) : (
-                                <span className="text-gray-500 text-[11px] font-mono">
-                                  ${parseFloat(bet.payout || 0).toFixed(2)}
+                                <span className="text-gray-400 text-[11px] font-mono">
+                                  ₹{parseFloat(bet.payout || 0).toFixed(2)}
                                 </span>
                               )}
                             </td>
@@ -413,54 +453,64 @@ export default function DealerPortal() {
                   </div>
 
                   {/* Settle Bet Modal Sub-form */}
-                  {settleBetId && (
-                    <div className="p-4 bg-casino-dark border border-gold/50 rounded-xl mt-4 animate-fade-in">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold text-gold">Settle Bet #{settleBetId}</h4>
-                        <button onClick={() => setSettleBetId(null)} className="text-xs text-gray-400 hover:text-white">✕</button>
+                  {settleBetId && (() => {
+                    const selectedBet = gameBets.find(b => b.bet_id === settleBetId);
+                    const wagerAmt = selectedBet ? parseFloat(selectedBet.amount) : 0;
+                    const isBlackjack = selectedBet?.bet_type?.toUpperCase() === 'BLACKJACK';
+                    const autoPayout = settleOutcome === 'WON' 
+                      ? (isBlackjack ? wagerAmt * 2.5 : wagerAmt * 2.0).toFixed(2)
+                      : settleOutcome === 'CANCELLED' 
+                        ? wagerAmt.toFixed(2)
+                        : '0.00';
+
+                    return (
+                      <div className="p-4 bg-casino-dark border border-gold/50 rounded-xl mt-4 animate-fade-in">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-bold text-gold">
+                            Settle Bet #{settleBetId} ({selectedBet?.player_name || `Player #${selectedBet?.player_id}`}) - Wager: ₹{wagerAmt.toFixed(2)}
+                          </h4>
+                          <button onClick={() => setSettleBetId(null)} className="text-xs text-gray-400 hover:text-white">✕</button>
+                        </div>
+
+                        <form onSubmit={handleSettleBet} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[11px] text-gray-400 mb-1">Outcome</label>
+                            <select
+                              value={settleOutcome}
+                              onChange={(e) => setSettleOutcome(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-casino-card border border-casino-border rounded text-white text-xs"
+                            >
+                              <option value="WON">WON (Player Wins)</option>
+                              <option value="LOST">LOST (House Wins)</option>
+                              <option value="CANCELLED">PUSH / CANCELLED (Refund)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] text-gray-400 mb-1">
+                              Settlement Payout (Auto-Calculated)
+                            </label>
+                            <div className="w-full px-2.5 py-1.5 bg-white/5 border border-casino-border rounded text-gold font-bold text-xs flex items-center justify-between">
+                              <span>₹{autoPayout}</span>
+                              <span className="text-[10px] text-gray-400 font-normal">
+                                {settleOutcome === 'WON' ? (isBlackjack ? '2.5x Blackjack' : '2x Wager') : settleOutcome === 'CANCELLED' ? 'Full Refund' : 'House Wins'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-end">
+                            <button
+                              type="submit"
+                              disabled={actionLoading}
+                              className="w-full py-1.5 px-3 bg-gold text-black font-bold text-xs rounded hover:opacity-90 shadow-gold-sm disabled:opacity-50"
+                            >
+                              {actionLoading ? 'Settling...' : 'Confirm & Settle'}
+                            </button>
+                          </div>
+                        </form>
                       </div>
-
-                      <form onSubmit={handleSettleBet} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-[11px] text-gray-400 mb-1">Outcome</label>
-                          <select
-                            value={settleOutcome}
-                            onChange={(e) => setSettleOutcome(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-casino-card border border-casino-border rounded text-white text-xs"
-                          >
-                            <option value="WON">WON (Player Wins)</option>
-                            <option value="LOST">LOST (House Wins)</option>
-                            <option value="CANCELLED">PUSH / CANCELLED</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] text-gray-400 mb-1">
-                            Payout Amount ($)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            disabled={settleOutcome !== 'WON'}
-                            value={settleOutcome === 'WON' ? settlePayout : '0.00'}
-                            onChange={(e) => setSettlePayout(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-casino-card border border-casino-border rounded text-white text-xs disabled:opacity-40"
-                            placeholder="0.00"
-                          />
-                        </div>
-
-                        <div className="flex items-end">
-                          <button
-                            type="submit"
-                            disabled={actionLoading}
-                            className="w-full py-1.5 px-3 bg-gold text-black font-bold text-xs rounded hover:opacity-90 shadow-gold-sm"
-                          >
-                            Execute Stored Procedure
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
             </div>

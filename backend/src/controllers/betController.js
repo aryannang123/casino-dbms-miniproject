@@ -154,7 +154,31 @@ const getBetHistory = async (req, res) => {
 const settleBet = async (req, res) => {
     try {
         const { id } = req.params;
-        const { outcome, payout = 0 } = req.body;
+        let { outcome, payout } = req.body;
+
+        // Auto-calculate payout if not explicitly provided
+        if (payout == null || parseFloat(payout) <= 0) {
+            const betCheck = await query('SELECT amount, bet_type FROM BET WHERE bet_id = ?', [id]);
+            if (betCheck.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Bet not found.'
+                });
+            }
+            const bet = betCheck.rows[0];
+            const amount = parseFloat(bet.amount);
+
+            if (outcome === 'WON') {
+                const isBlackjack = bet.bet_type?.toUpperCase() === 'BLACKJACK';
+                payout = isBlackjack ? Number((amount * 2.5).toFixed(2)) : Number((amount * 2.0).toFixed(2));
+            } else if (outcome === 'CANCELLED') {
+                payout = Number(amount.toFixed(2));
+            } else {
+                payout = 0.00;
+            }
+        } else {
+            payout = parseFloat(payout);
+        }
 
         // Call the stored procedure
         const result = await callProcedure('settle_bet', [id, outcome, payout]);

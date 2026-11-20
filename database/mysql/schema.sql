@@ -17,7 +17,6 @@ CREATE TABLE DEALER (
     dealer_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     employee_id VARCHAR(50) UNIQUE NOT NULL,
-    shift ENUM('MORNING', 'AFTERNOON', 'NIGHT'),
     hire_date DATE NOT NULL DEFAULT (CURDATE()),
     status ENUM('ACTIVE', 'INACTIVE', 'ON_LEAVE') NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -162,7 +161,6 @@ CREATE INDEX idx_player_registration_date ON PLAYER(registration_date);
 -- Dealer indexes
 CREATE INDEX idx_dealer_employee_id ON DEALER(employee_id);
 CREATE INDEX idx_dealer_status ON DEALER(status);
-CREATE INDEX idx_dealer_shift ON DEALER(shift);
 
 -- Game indexes
 CREATE INDEX idx_game_dealer ON GAME(dealer_id);

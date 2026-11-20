@@ -253,7 +253,7 @@ const getGameBets = async (req, res) => {
 const getDealers = async (req, res) => {
     try {
         const result = await query(
-            'SELECT dealer_id, name, employee_id, shift, status FROM DEALER WHERE status = "ACTIVE" ORDER BY name ASC'
+            'SELECT dealer_id, name, employee_id, status FROM DEALER WHERE status = "ACTIVE" ORDER BY name ASC'
         );
         res.json({
             success: true,

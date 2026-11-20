@@ -80,11 +80,13 @@ RETURNS TABLE(
 DECLARE
     v_player_id INTEGER;
     v_current_outcome bet_outcome;
+    v_amount DECIMAL(10, 2);
+    v_bet_type VARCHAR(50);
     v_new_balance DECIMAL(12, 2);
 BEGIN
     -- Get bet details
-    SELECT BET.player_id, BET.outcome 
-    INTO v_player_id, v_current_outcome
+    SELECT BET.player_id, BET.outcome, BET.amount, BET.bet_type 
+    INTO v_player_id, v_current_outcome, v_amount, v_bet_type
     FROM BET 
     WHERE BET.bet_id = p_bet_id;
 
@@ -96,13 +98,17 @@ BEGIN
         RAISE EXCEPTION 'Bet already settled with outcome: %', v_current_outcome;
     END IF;
 
-    -- Validate payout
-    IF p_outcome = 'WON' AND p_payout <= 0 THEN
-        RAISE EXCEPTION 'Payout must be greater than 0 for winning bets';
-    END IF;
-
-    IF p_outcome IN ('LOST', 'CANCELLED') AND p_payout != 0 THEN
-        RAISE EXCEPTION 'Payout must be 0 for lost or cancelled bets';
+    -- Automatically calculate payout if not supplied or <= 0
+    IF p_outcome = 'WON' AND (p_payout IS NULL OR p_payout <= 0) THEN
+        IF UPPER(v_bet_type) = 'BLACKJACK' THEN
+            p_payout := v_amount * 2.5;
+        ELSE
+            p_payout := v_amount * 2.0;
+        END IF;
+    ELSIF p_outcome = 'CANCELLED' AND (p_payout IS NULL OR p_payout <= 0) THEN
+        p_payout := v_amount;
+    ELSIF p_outcome = 'LOST' THEN
+        p_payout := 0.00;
     END IF;
 
     -- Update bet (trigger will handle wallet credit if won)

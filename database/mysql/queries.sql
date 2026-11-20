@@ -144,7 +144,6 @@ SELECT
     ct.table_number,
     d.name                                                                                  AS dealer_name,
     d.employee_id,
-    d.shift,
     g.start_time,
     g.end_time,
     TIMESTAMPDIFF(MINUTE, g.start_time, g.end_time)                                        AS duration_minutes,
@@ -167,7 +166,7 @@ FROM GAME g
 JOIN CASINO_TABLE ct ON g.table_id = ct.table_id
 JOIN DEALER d ON g.dealer_id = d.dealer_id
 LEFT JOIN BET b ON g.game_id = b.game_id
-GROUP BY g.game_id, g.game_type, ct.table_number, d.name, d.employee_id, d.shift,
+GROUP BY g.game_id, g.game_type, ct.table_number, d.name, d.employee_id,
          g.start_time, g.end_time, g.status
 ORDER BY g.start_time DESC;
 
@@ -277,7 +276,6 @@ SELECT
     d.dealer_id,
     d.name                                                                          AS dealer_name,
     d.employee_id,
-    d.shift,
     COUNT(DISTINCT g.game_id)                                                       AS games_conducted,
     COUNT(DISTINCT DATE(g.start_time))                                              AS days_worked,
     ROUND(SUM(TIMESTAMPDIFF(MINUTE, g.start_time, g.end_time)) / 60.0, 2)          AS total_hours_worked,
@@ -296,7 +294,7 @@ LEFT JOIN GAME g ON d.dealer_id = g.dealer_id AND g.status = 'COMPLETED'
 LEFT JOIN BET b ON g.game_id = b.game_id
 WHERE d.status = 'ACTIVE'
   AND (g.start_time IS NULL OR g.start_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
-GROUP BY d.dealer_id, d.name, d.employee_id, d.shift
+GROUP BY d.dealer_id, d.name, d.employee_id
 HAVING COUNT(g.game_id) > 0
 ORDER BY revenue_generated DESC;
 

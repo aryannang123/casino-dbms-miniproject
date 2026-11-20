@@ -300,7 +300,6 @@ SELECT
     d.dealer_id,
     d.name as dealer_name,
     d.employee_id,
-    d.shift,
     COUNT(DISTINCT g.game_id) as games_conducted,
     COUNT(DISTINCT DATE(g.start_time)) as days_worked,
     SUM(EXTRACT(EPOCH FROM (g.end_time - g.start_time)) / 3600) as total_hours_worked,
@@ -318,7 +317,7 @@ LEFT JOIN GAME g ON d.dealer_id = g.dealer_id AND g.status = 'COMPLETED'
 LEFT JOIN BET b ON g.game_id = b.game_id
 WHERE d.status = 'ACTIVE'
 AND g.start_time >= CURRENT_DATE - INTERVAL '30 days'
-GROUP BY d.dealer_id, d.name, d.employee_id, d.shift
+GROUP BY d.dealer_id, d.name, d.employee_id
 HAVING COUNT(g.game_id) > 0
 ORDER BY revenue_generated DESC;
 

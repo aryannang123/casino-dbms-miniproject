@@ -86,6 +86,8 @@ CREATE PROCEDURE settle_bet(
 BEGIN
     DECLARE v_player_id INT;
     DECLARE v_current_outcome VARCHAR(20);
+    DECLARE v_amount DECIMAL(10, 2);
+    DECLARE v_bet_type VARCHAR(50);
     DECLARE v_new_balance DECIMAL(12, 2);
     DECLARE exit handler for sqlexception
     BEGIN
@@ -96,7 +98,8 @@ BEGIN
     START TRANSACTION;
     
     -- Get bet details
-    SELECT player_id, outcome INTO v_player_id, v_current_outcome
+    SELECT player_id, outcome, amount, bet_type 
+    INTO v_player_id, v_current_outcome, v_amount, v_bet_type
     FROM BET WHERE bet_id = p_bet_id FOR UPDATE;
 
     IF v_player_id IS NULL THEN
@@ -107,13 +110,26 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bet already settled';
     END IF;
 
+    -- Automatically calculate payout if not supplied or <= 0
+    IF p_outcome = 'WON' AND (p_payout IS NULL OR p_payout <= 0) THEN
+        IF UPPER(v_bet_type) = 'BLACKJACK' THEN
+            SET p_payout = v_amount * 2.5;
+        ELSE
+            SET p_payout = v_amount * 2.0;
+        END IF;
+    ELSEIF p_outcome = 'CANCELLED' AND (p_payout IS NULL OR p_payout <= 0) THEN
+        SET p_payout = v_amount;
+    ELSEIF p_outcome = 'LOST' THEN
+        SET p_payout = 0.00;
+    END IF;
+
     -- Update bet
     UPDATE BET 
     SET outcome = p_outcome, payout = p_payout
     WHERE bet_id = p_bet_id;
 
-    -- Credit payout if won
-    IF p_outcome = 'WON' AND p_payout > 0 THEN
+    -- Credit payout if won or cancelled (refund)
+    IF p_payout > 0 THEN
         UPDATE WALLET 
         SET balance = balance + p_payout
         WHERE player_id = v_player_id;

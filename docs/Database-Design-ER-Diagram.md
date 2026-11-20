@@ -50,7 +50,6 @@ erDiagram
         int dealer_id PK
         string name
         string employee_id UK
-        enum shift "MORNING, AFTERNOON, NIGHT"
         date hire_date
         enum status "ACTIVE, INACTIVE, ON_LEAVE"
         timestamp created_at
@@ -161,7 +160,6 @@ erDiagram
 - **Primary Key**: `dealer_id` (Auto Increment INT)
 - **Candidate Key**: `employee_id` (UNIQUE)
 - **Integrity Constraints**:
-  - `shift IN ('MORNING', 'AFTERNOON', 'NIGHT')`
   - `status IN ('ACTIVE', 'INACTIVE', 'ON_LEAVE')`
 
 ### Table: `CASINO_TABLE`

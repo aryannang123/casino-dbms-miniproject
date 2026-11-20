@@ -5,15 +5,15 @@
 -- DEALERS
 -- =====================================================
 
-INSERT INTO DEALER (name, employee_id, shift, hire_date, status) VALUES
-('John Smith', 'EMP001', 'MORNING', '2023-01-15', 'ACTIVE'),
-('Maria Garcia', 'EMP002', 'AFTERNOON', '2023-02-20', 'ACTIVE'),
-('David Chen', 'EMP003', 'NIGHT', '2023-03-10', 'ACTIVE'),
-('Sarah Johnson', 'EMP004', 'MORNING', '2023-04-05', 'ACTIVE'),
-('Michael Brown', 'EMP005', 'AFTERNOON', '2023-05-12', 'ACTIVE'),
-('Lisa Anderson', 'EMP006', 'NIGHT', '2023-06-18', 'ACTIVE'),
-('James Wilson', 'EMP007', 'MORNING', '2023-07-22', 'ON_LEAVE'),
-('Emily Davis', 'EMP008', 'AFTERNOON', '2023-08-30', 'ACTIVE');
+INSERT INTO DEALER (name, employee_id, hire_date, status) VALUES
+('John Smith', 'EMP001', '2023-01-15', 'ACTIVE'),
+('Maria Garcia', 'EMP002', '2023-02-20', 'ACTIVE'),
+('David Chen', 'EMP003', '2023-03-10', 'ACTIVE'),
+('Sarah Johnson', 'EMP004', '2023-04-05', 'ACTIVE'),
+('Michael Brown', 'EMP005', '2023-05-12', 'ACTIVE'),
+('Lisa Anderson', 'EMP006', '2023-06-18', 'ACTIVE'),
+('James Wilson', 'EMP007', '2023-07-22', 'ON_LEAVE'),
+('Emily Davis', 'EMP008', '2023-08-30', 'ACTIVE');
 
 -- =====================================================
 -- CASINO TABLES
